@@ -8,7 +8,7 @@ echo ================================
 echo.
 
 
-echo [1/5] Cleaning caches...
+echo [1/2] Cleaning caches...
 for /f "delims=" %%i in ('dir /s /b /ad __pycache__ 2^>nul') do rd /s /q "%%i"
 del /s /q *.pyc 2>nul
 del /q backend\memory_shards.db 2>nul
@@ -17,7 +17,7 @@ if exist "frontend\.next" rd /s /q "frontend\.next"
 if exist "backend\storage" rd /s /q "backend\storage"
 if exist "backend\models" rd /s /q "backend\models"
 
-echo [3/5] git add...
+echo [2/2] git add...
 git add .
 
 pause
