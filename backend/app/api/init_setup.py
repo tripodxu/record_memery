@@ -3,6 +3,7 @@ import json
 import csv
 import io
 import os
+import shutil
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,80 @@ from app.config import get_settings
 
 router = APIRouter(prefix="/api/system", tags=["system"])
 settings = get_settings()
+
+
+@router.get("/status")
+async def system_status(db: AsyncSession = Depends(get_db)):
+    """只读检测系统状态（不修改任何东西）"""
+    checks = []
+
+    # 1. DeepSeek API Key
+    has_key = bool(settings.deepseek_api_key and settings.deepseek_api_key != "your_deepseek_api_key_here")
+    if has_key:
+        checks.append({"name": "AI 模型", "status": "ok", "detail": "API Key 已配置"})
+    else:
+        checks.append({"name": "AI 模型", "status": "warn", "detail": "未配置 API Key，AI 功能不可用"})
+
+    # 2. DeepSeek API 连通性（仅在 Key 已配置时检测）
+    if has_key:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.get(
+                    f"{settings.deepseek_base_url}/v1/models",
+                    headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
+                )
+                if resp.status_code == 200:
+                    checks.append({"name": "API 连通", "status": "ok", "detail": "DeepSeek 服务正常"})
+                else:
+                    checks.append({"name": "API 连通", "status": "error", "detail": f"HTTP {resp.status_code}"})
+        except Exception as e:
+            checks.append({"name": "API 连通", "status": "error", "detail": "无法连接 DeepSeek"})
+
+    # 3. Vosk 语音模型
+    from app.services.vosk_service import is_model_ready
+    if is_model_ready():
+        checks.append({"name": "语音识别", "status": "ok", "detail": "Vosk 模型已就绪"})
+    else:
+        checks.append({"name": "语音识别", "status": "warn", "detail": "模型未下载，语音可保存但不转写"})
+
+    # 4. ffmpeg
+    ffmpeg_ok = shutil.which("ffmpeg") is not None
+    if ffmpeg_ok:
+        checks.append({"name": "音频处理", "status": "ok", "detail": "ffmpeg 已安装"})
+    else:
+        checks.append({"name": "音频处理", "status": "warn", "detail": "未安装 ffmpeg，部分音频格式无法转写"})
+
+    # 5. 存储目录
+    storage_ok = True
+    for sub in ["photos", "thumbs", "audio"]:
+        if not (Path(settings.storage_dir) / sub).exists():
+            storage_ok = False
+            break
+    if storage_ok:
+        checks.append({"name": "存储目录", "status": "ok", "detail": "目录结构正常"})
+    else:
+        checks.append({"name": "存储目录", "status": "warn", "detail": "部分目录缺失，请运行初始化"})
+
+    # 6. 数据统计
+    try:
+        count_result = await db.execute(select(func.count(Memory.id)))
+        total = count_result.scalar() or 0
+        checks.append({"name": "记忆数据", "status": "ok", "detail": f"共 {total} 条记忆"})
+    except Exception:
+        checks.append({"name": "记忆数据", "status": "error", "detail": "数据库异常"})
+
+    # 汇总
+    has_error = any(c["status"] == "error" for c in checks)
+    has_warn = any(c["status"] == "warn" for c in checks)
+    if has_error:
+        overall = "error"
+    elif has_warn:
+        overall = "warn"
+    else:
+        overall = "ok"
+
+    return JSONResponse(content={"overall": overall, "checks": checks})
 
 
 @router.post("/init")

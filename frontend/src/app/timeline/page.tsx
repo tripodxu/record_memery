@@ -22,6 +22,8 @@ import {
   Pencil, Plus, Mic, MicOff, Save, Camera,
 } from "lucide-react";
 
+import SystemStatus from "@/components/SystemStatus";
+
 const emotionEmojis: Record<string, string> = {
   "治愈": "🌿", "孤独": "🌙", "兴奋": "✨", "平静": "☁️",
   "惊喜": "🎉", "感动": "💧", "忧郁": "🌧️", "温暖": "☀️",
@@ -403,6 +405,9 @@ export default function TimelinePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
+      {/* 系统状态 — 右上角指示器 */}
+      <SystemStatus />
+
       {/* 标题 + 操作栏 */}
       <div className="text-center mb-10 animate-fade-up">
         <h1 className="text-2xl font-serif text-film-200 mb-2">时间线</h1>

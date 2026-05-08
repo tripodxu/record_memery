@@ -47,7 +47,19 @@ export interface InitResult {
   steps: { name: string; status: string; detail: string }[];
 }
 
+export interface SystemStatus {
+  overall: "ok" | "warn" | "error";
+  checks: { name: string; status: string; detail: string }[];
+}
+
 // ==================== 系统 ====================
+
+// 检测系统状态（只读）
+export async function checkSystemStatus(): Promise<SystemStatus> {
+  const res = await fetch(`${API_BASE}/api/system/status`);
+  if (!res.ok) throw new Error(`检测失败: ${res.statusText}`);
+  return res.json();
+}
 
 // 一键初始化
 export async function systemInit(): Promise<InitResult> {

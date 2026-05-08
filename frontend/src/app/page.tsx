@@ -16,6 +16,7 @@ import {
   Save, ArrowRight, Sparkles,
   MessageCircle, Clock, Check,
 } from "lucide-react";
+import SystemStatus from "@/components/SystemStatus";
 
 const NebulaScene = lazy(() => import("@/components/NebulaScene"));
 
@@ -271,6 +272,9 @@ export default function HomePage() {
           />
         </Suspense>
       </div>
+
+      {/* 系统状态 — 右上角指示器 */}
+      <SystemStatus />
 
       {/* ===== 主输入界面 ===== */}
       {(phase === "idle" || phase === "composing") && (
